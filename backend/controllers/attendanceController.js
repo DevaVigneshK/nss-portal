@@ -1,40 +1,143 @@
 const Attendance = require("../models/Attendance");
+const Event = require("../models/Event");
+const User = require("../models/User");
+
+// Helper to credit hours to user
+const creditVolunteerHours = async (studentId, hours) => {
+    try {
+        await User.findByIdAndUpdate(studentId, {
+            $inc: { volunteerHours: hours }
+        });
+    } catch (err) {
+        console.error("Failed to credit volunteer hours:", err);
+    }
+};
 
 exports.markAttendance = async (req, res) => {
-
     try {
+        const { studentId, eventId, status } = req.body;
 
-        const attendance = await Attendance.create(req.body);
+        const event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+
+        // Check if duplicate exists
+        const existingAttendance = await Attendance.findOne({ studentId, eventId });
+        if (existingAttendance) {
+            return res.status(400).json({ message: "Attendance already logged for this student at this event" });
+        }
+
+        const hoursToCredit = event.hoursCredited || 3;
+
+        const attendance = await Attendance.create({
+            studentId,
+            eventId,
+            status: status || "Present",
+            markedBy: req.user.id,
+            hoursCredited: hoursToCredit
+        });
+
+        // Credit the volunteer hours to the student's User model
+        if ((status || "Present") === "Present") {
+            await creditVolunteerHours(studentId, hoursToCredit);
+        }
 
         res.status(201).json({
-            message: "Attendance Marked",
+            message: "Attendance marked successfully",
             attendance
         });
-
     } catch (error) {
-
-        res.status(500).json({
-            message: error.message
-        });
-
+        res.status(500).json({ message: error.message });
     }
 };
 
 exports.getAttendance = async (req, res) => {
-
     try {
+        const { eventId, studentId } = req.query;
+        let query = {};
+        if (eventId) query.eventId = eventId;
+        if (studentId) query.studentId = studentId;
 
-        const attendance = await Attendance.find()
-            .populate("studentId")
-            .populate("eventId");
+        const attendance = await Attendance.find(query)
+            .populate("studentId", "name email rollNumber department volunteerHours")
+            .populate("eventId", "title date category venue status hoursCredited")
+            .populate("markedBy", "name role");
 
         res.status(200).json(attendance);
-
     } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
 
-        res.status(500).json({
-            message: error.message
+// Generate QR Code payload for students to scan
+exports.generateAttendanceCode = async (req, res) => {
+    try {
+        const { eventId } = req.body;
+        const event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+
+        // Create a basic secure otp/code token for verification
+        const randomToken = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Cache or save code in the event or temporary map. We can save it as an OTP in a custom field,
+        // or just return the static details for QR code.
+        // Let's return details which the scanner will send back.
+        res.status(200).json({
+            message: "QR Code details generated successfully",
+            qrData: {
+                eventId: event._id,
+                title: event.title,
+                date: event.date,
+                passcode: randomToken
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Verify OTP or QR Code submitted by student to check in
+exports.selfCheckIn = async (req, res) => {
+    try {
+        const { eventId, passcode } = req.body;
+        const studentId = req.user.id;
+
+        const event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+
+        // Prevent check-in if event is not active or completed
+        if (event.status === "Completed") {
+            return res.status(400).json({ message: "This event is already completed." });
+        }
+
+        const existingAttendance = await Attendance.findOne({ studentId, eventId });
+        if (existingAttendance) {
+            return res.status(400).json({ message: "You have already checked in for this event" });
+        }
+
+        const hoursToCredit = event.hoursCredited || 3;
+
+        const attendance = await Attendance.create({
+            studentId,
+            eventId,
+            status: "Present",
+            otpCode: passcode,
+            hoursCredited: hoursToCredit
         });
 
+        // Credit student's volunteer hours
+        await creditVolunteerHours(studentId, hoursToCredit);
+
+        res.status(201).json({
+            message: "Successfully checked in! Volunteer hours credited.",
+            attendance
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };
