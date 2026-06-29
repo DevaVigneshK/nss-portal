@@ -7,6 +7,14 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("analytics");
     const [actionLoading, setActionLoading] = useState(false);
+    const [staffForm, setStaffForm] = useState({
+        name: "",
+        email: "",
+        password: "",
+        department: "",
+        phone: ""
+    });
+    const [staffMessage, setStaffMessage] = useState("");
 
     const fetchAdminStatsAndUsers = async () => {
         setLoading(true);
@@ -53,6 +61,33 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleStaffInputChange = (e) => {
+        const { name, value } = e.target;
+        setStaffForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleCreateStaff = async (e) => {
+        e.preventDefault();
+        setActionLoading(true);
+        setStaffMessage("");
+        try {
+            await axios.post("/auth/staff", staffForm);
+            setStaffForm({
+                name: "",
+                email: "",
+                password: "",
+                department: "",
+                phone: ""
+            });
+            setStaffMessage("Staff coordinator created successfully.");
+            fetchAdminStatsAndUsers();
+        } catch (err) {
+            setStaffMessage(err.response?.data?.message || "Failed to create staff coordinator.");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     if (loading || !stats) {
         return (
             <div className="flex h-64 items-center justify-center">
@@ -89,7 +124,7 @@ export default function AdminDashboard() {
                                 : "text-slate-500 hover:text-slate-800"
                         }`}
                     >
-                        User Directory ({users.length})
+                        Users & Staff ({users.length})
                     </button>
                 </div>
             </div>
@@ -179,73 +214,149 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             ) : (
-                /* User Directory Control Table */
-                <div className="rounded-3xl border border-slate-100 bg-white shadow-xl shadow-slate-100/50 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-100 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-400">
-                                    <th className="px-6 py-4">Name / Roll Number</th>
-                                    <th className="px-6 py-4">Email</th>
-                                    <th className="px-6 py-4">Department / Division</th>
-                                    <th className="px-6 py-4">Role</th>
-                                    <th className="px-6 py-4">Status</th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {users.map((u) => (
-                                    <tr key={u._id} className="hover:bg-slate-50/50">
-                                        <td className="px-6 py-4">
-                                            <p className="font-semibold text-slate-850">{u.name}</p>
-                                            <p className="text-xs text-slate-400 font-mono">{u.rollNumber || "Coordinator"}</p>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-500 font-mono text-xs">{u.email}</td>
-                                        <td className="px-6 py-4 text-slate-500">{u.department || "NSS Office"}</td>
-                                        <td className="px-6 py-4 capitalize font-semibold text-slate-700">
-                                            {u.role}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                                u.status === "Active"
-                                                    ? "bg-emerald-50 text-emerald-700"
-                                                    : u.status === "Suspended"
-                                                    ? "bg-rose-50 text-rose-700"
-                                                    : "bg-amber-50 text-amber-700"
-                                            }`}>
-                                                {u.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right space-x-2">
-                                            {u.role !== "admin" && (
-                                                <>
-                                                    <button
-                                                        onClick={() => handleUpdateStatus(u._id, u.status === "Active" ? "Suspended" : "Active")}
-                                                        disabled={actionLoading}
-                                                        className={`rounded px-2.5 py-1 text-xs font-bold transition ${
-                                                            u.status === "Active"
-                                                                ? "bg-rose-50 text-rose-700 hover:bg-rose-100"
-                                                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                                        }`}
-                                                    >
-                                                        {u.status === "Active" ? "Suspend" : "Activate"}
-                                                    </button>
-                                                    {u.role === "student" && (
-                                                        <button
-                                                            onClick={() => handleElevateRole(u._id, "organizer")}
-                                                            disabled={actionLoading}
-                                                            className="rounded bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-750 hover:bg-indigo-100"
-                                                        >
-                                                            Promote
-                                                        </button>
-                                                    )}
-                                                </>
-                                            )}
-                                        </td>
+                <div className="space-y-6">
+                    <form onSubmit={handleCreateStaff} className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+                        <div className="mb-5">
+                            <h3 className="text-lg font-bold text-slate-800">Add NSS Staff Coordinator</h3>
+                            <p className="text-xs text-slate-400 mt-0.5">Only admins can create NSS staff coordinator accounts.</p>
+                        </div>
+
+                        {staffMessage && (
+                            <div className={`mb-4 rounded-xl p-3 text-sm font-semibold ${
+                                staffMessage.includes("successfully")
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-rose-50 text-rose-700"
+                            }`}>
+                                {staffMessage}
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            <input
+                                required
+                                name="name"
+                                value={staffForm.name}
+                                onChange={handleStaffInputChange}
+                                placeholder="Full name"
+                                className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-600"
+                            />
+                            <input
+                                required
+                                type="email"
+                                name="email"
+                                value={staffForm.email}
+                                onChange={handleStaffInputChange}
+                                placeholder="staff@college.edu"
+                                className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-600"
+                            />
+                            <input
+                                required
+                                type="password"
+                                name="password"
+                                value={staffForm.password}
+                                onChange={handleStaffInputChange}
+                                placeholder="Temporary password"
+                                className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-600"
+                            />
+                            <select
+                                name="department"
+                                value={staffForm.department}
+                                onChange={handleStaffInputChange}
+                                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-indigo-600"
+                            >
+                                <option value="">NSS Office</option>
+                                <option value="Computer Science">Computer Science</option>
+                                <option value="Information Technology">Information Technology</option>
+                                <option value="Electronics & Comm">Electronics & Comm</option>
+                                <option value="Electrical & Electronics">Electrical & Electronics</option>
+                                <option value="Mechanical Eng">Mechanical Eng</option>
+                                <option value="Civil Eng">Civil Eng</option>
+                            </select>
+                            <input
+                                name="phone"
+                                value={staffForm.phone}
+                                onChange={handleStaffInputChange}
+                                placeholder="Phone number"
+                                className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-600"
+                            />
+                            <button
+                                type="submit"
+                                disabled={actionLoading}
+                                className="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                                {actionLoading ? "Creating..." : "Create NSS Staff Coordinator"}
+                            </button>
+                        </div>
+                    </form>
+
+                    {/* User Directory Control Table */}
+                    <div className="rounded-3xl border border-slate-100 bg-white shadow-xl shadow-slate-100/50 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-100 bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-400">
+                                        <th className="px-6 py-4">Name / Roll Number</th>
+                                        <th className="px-6 py-4">Email</th>
+                                        <th className="px-6 py-4">Department / Division</th>
+                                        <th className="px-6 py-4">Role</th>
+                                        <th className="px-6 py-4">Status</th>
+                                        <th className="px-6 py-4 text-right">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {users.map((u) => (
+                                        <tr key={u._id} className="hover:bg-slate-50/50">
+                                            <td className="px-6 py-4">
+                                                <p className="font-semibold text-slate-850">{u.name}</p>
+                                                <p className="text-xs text-slate-400 font-mono">{u.rollNumber || "Coordinator"}</p>
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-500 font-mono text-xs">{u.email}</td>
+                                            <td className="px-6 py-4 text-slate-500">{u.department || "NSS Office"}</td>
+                                            <td className="px-6 py-4 capitalize font-semibold text-slate-700">
+                                                {u.role === "organizer" ? "NSS Staff Coordinator" : u.role}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                                    u.status === "Active"
+                                                        ? "bg-emerald-50 text-emerald-700"
+                                                        : u.status === "Suspended"
+                                                        ? "bg-rose-50 text-rose-700"
+                                                        : "bg-amber-50 text-amber-700"
+                                                }`}>
+                                                    {u.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right space-x-2">
+                                                {u.role !== "admin" && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleUpdateStatus(u._id, u.status === "Active" ? "Suspended" : "Active")}
+                                                            disabled={actionLoading}
+                                                            className={`rounded px-2.5 py-1 text-xs font-bold transition ${
+                                                                u.status === "Active"
+                                                                    ? "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                                                                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                                            }`}
+                                                        >
+                                                            {u.status === "Active" ? "Suspend" : "Activate"}
+                                                        </button>
+                                                        {u.role === "student" && (
+                                                            <button
+                                                                onClick={() => handleElevateRole(u._id, "organizer")}
+                                                                disabled={actionLoading}
+                                                                className="rounded bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-750 hover:bg-indigo-100"
+                                                            >
+                                                                Promote
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}

@@ -3,6 +3,7 @@ const router = express.Router();
 
 const {
     register,
+    createStaffCoordinator,
     login,
     getProfile,
     updateProfile,
@@ -21,6 +22,14 @@ const adminOnly = (req, res, next) => {
     }
 };
 
+const staffOrAdmin = (req, res, next) => {
+    if (req.user && (req.user.role === "admin" || req.user.role === "organizer")) {
+        next();
+    } else {
+        res.status(403).json({ message: "Access denied. Staff or Admin role required." });
+    }
+};
+
 router.post("/register", register);
 router.post("/login", login);
 
@@ -29,7 +38,8 @@ router.get("/profile", authMiddleware, getProfile);
 router.put("/profile", authMiddleware, updateProfile);
 
 // Admin-only endpoints
-router.get("/users", authMiddleware, adminOnly, getAllUsers);
+router.post("/staff", authMiddleware, adminOnly, createStaffCoordinator);
+router.get("/users", authMiddleware, staffOrAdmin, getAllUsers);
 router.put("/users/:id", authMiddleware, adminOnly, updateUserStatus);
 
 module.exports = router;

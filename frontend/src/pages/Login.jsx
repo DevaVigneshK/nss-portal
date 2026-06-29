@@ -2,8 +2,8 @@ import React, { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
-export default function Login() {
-    const { login, errorMessage } = useContext(AuthContext);
+export default function Login({ portal = "student" }) {
+    const { login, logout, errorMessage } = useContext(AuthContext);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -15,7 +15,16 @@ export default function Login() {
         setError("");
         setLoading(true);
         try {
-            await login(email, password);
+            const loggedUser = await login(email, password);
+            const allowedRoles = portal === "admin" ? ["admin", "organizer"] : ["student"];
+            if (!allowedRoles.includes(loggedUser.role)) {
+                logout();
+                throw new Error(
+                    portal === "admin"
+                        ? "Please use the student login for volunteer accounts."
+                        : "Please use the admin/staff login for coordinator accounts."
+                );
+            }
             navigate("/dashboard");
         } catch (err) {
             setError(err.message || "Invalid email or password");
@@ -24,6 +33,8 @@ export default function Login() {
         }
     };
 
+    const isAdminPortal = portal === "admin";
+
     return (
         <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
             <div className="w-full max-w-md space-y-8 rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-100">
@@ -31,8 +42,14 @@ export default function Login() {
                     <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 font-bold text-white shadow-lg shadow-indigo-150">
                         NSS
                     </span>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-slate-800">Welcome Back</h2>
-                    <p className="text-sm text-slate-500">Sign in to access your NSS volunteer dashboard</p>
+                    <h2 className="text-3xl font-extrabold tracking-tight text-slate-800">
+                        {isAdminPortal ? "Admin / Staff Login" : "Student Login"}
+                    </h2>
+                    <p className="text-sm text-slate-500">
+                        {isAdminPortal
+                            ? "Sign in with an admin or staff coordinator account"
+                            : "Sign in to access your NSS volunteer dashboard"}
+                    </p>
                 </div>
 
                 {(error || errorMessage) && (
@@ -79,12 +96,28 @@ export default function Login() {
                 </form>
 
                 <div className="border-t border-slate-100 pt-6 text-center text-sm">
-                    <p className="text-slate-500">
-                        New volunteer?{" "}
-                        <Link to="/register" className="font-semibold text-indigo-600 hover:underline">
-                            Create an account
-                        </Link>
-                    </p>
+                    {isAdminPortal ? (
+                        <p className="text-slate-500">
+                            Student volunteer?{" "}
+                            <Link to="/login" className="font-semibold text-indigo-600 hover:underline">
+                                Use student login
+                            </Link>
+                        </p>
+                    ) : (
+                        <div className="space-y-2">
+                            <p className="text-slate-500">
+                                New volunteer?{" "}
+                                <Link to="/register" className="font-semibold text-indigo-600 hover:underline">
+                                    Create a student account
+                                </Link>
+                            </p>
+                            <p>
+                                <Link to="/admin-login" className="text-xs font-semibold text-slate-500 hover:text-indigo-600">
+                                    Admin / staff login
+                                </Link>
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

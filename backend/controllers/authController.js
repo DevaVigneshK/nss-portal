@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 
 exports.register = async (req, res) => {
     try {
-        const { name, email, password, role, department, rollNumber, phone } = req.body;
+        const { name, email, password, department, rollNumber, phone } = req.body;
 
         const existingUser = await User.findOne({ email });
         if (existingUser) {
@@ -17,11 +17,10 @@ exports.register = async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            role: role || "student",
+            role: "student",
             department: department || "",
             rollNumber: rollNumber || "",
             phone: phone || "",
-            // Organizers and admins could start as Active or Pending, let's keep all active for ease of testing
             status: "Active"
         });
 
@@ -32,6 +31,49 @@ exports.register = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                status: user.status
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.createStaffCoordinator = async (req, res) => {
+    try {
+        const { name, email, password, department, phone } = req.body;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: "Name, email, and password are required" });
+        }
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: "User already exists" });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await User.create({
+            name,
+            email,
+            password: hashedPassword,
+            role: "organizer",
+            department: department || "",
+            rollNumber: "",
+            phone: phone || "",
+            status: "Active"
+        });
+
+        res.status(201).json({
+            message: "Staff coordinator created successfully",
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                department: user.department,
+                phone: user.phone,
                 status: user.status
             }
         });

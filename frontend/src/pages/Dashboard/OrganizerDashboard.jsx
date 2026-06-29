@@ -7,7 +7,18 @@ export default function OrganizerDashboard() {
     const { user } = useContext(AuthContext);
     const [events, setEvents] = useState([]);
     const [attendanceList, setAttendanceList] = useState([]);
+    const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
+    const userId = user?.id || user?._id;
+
+    const groupByDepartment = (list) => {
+        return list.reduce((groups, item) => {
+            const department = item.department || "General";
+            if (!groups[department]) groups[department] = [];
+            groups[department].push(item);
+            return groups;
+        }, {});
+    };
 
     const fetchOrganizerStats = async () => {
         setLoading(true);
@@ -15,8 +26,14 @@ export default function OrganizerDashboard() {
             // Get all events
             const eventsRes = await axios.get("/events");
             // Filter events organized by this user
-            const myDrives = eventsRes.data.filter(e => e.organizer?._id === user?.id || e.organizer === user?.id);
+            const myDrives = eventsRes.data.filter((e) => {
+                const organizerId = e.organizer?._id || e.organizer;
+                return organizerId?.toString() === userId?.toString();
+            });
             setEvents(myDrives);
+
+            const studentsRes = await axios.get("/auth/users?role=student");
+            setStudents(studentsRes.data);
 
             // Get attendance check-ins
             const attRes = await axios.get("/attendance");
@@ -35,10 +52,13 @@ export default function OrganizerDashboard() {
         if (user) {
             fetchOrganizerStats();
         }
-    }, [user]);
+    }, [user, userId]);
 
     const activeDrives = events.filter(e => e.status !== "Completed");
     const completedDrives = events.filter(e => e.status === "Completed");
+    const studentsByDepartment = groupByDepartment(students);
+    const registeredStudents = events.flatMap((event) => event.registeredStudents || []);
+    const registeredByDepartment = groupByDepartment(registeredStudents);
 
     return (
         <div className="space-y-8 text-left">
@@ -66,6 +86,104 @@ export default function OrganizerDashboard() {
                     <p className="mt-2 text-2xl font-black text-slate-800">
                         {events.reduce((acc, curr) => acc + (curr.registeredStudents?.length || 0), 0)}
                     </p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800">Department-wise Students</h3>
+                        <p className="text-xs text-slate-400 mt-0.5">Open a department to view student volunteers</p>
+                    </div>
+                    {loading ? (
+                        <div className="h-24 animate-pulse bg-slate-100 rounded-2xl"></div>
+                    ) : students.length === 0 ? (
+                        <div className="rounded-2xl border-2 border-dashed border-slate-150 p-6 text-center text-slate-400 text-sm">
+                            No student volunteers found.
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-100 rounded-xl border border-slate-100">
+                            {Object.entries(studentsByDepartment).map(([department, deptStudents]) => (
+                                <details key={department} className="group">
+                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 hover:bg-slate-50">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-800">{department}</p>
+                                            <p className="text-xs text-slate-400">Student volunteers</p>
+                                        </div>
+                                        <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
+                                            {deptStudents.length}
+                                        </span>
+                                    </summary>
+                                    <div className="max-h-56 overflow-y-auto border-t border-slate-100 bg-slate-50 px-4 py-2">
+                                        <table className="w-full text-left text-xs">
+                                            <thead className="text-slate-400">
+                                                <tr>
+                                                    <th className="py-2 font-bold uppercase">Name</th>
+                                                    <th className="py-2 font-bold uppercase">Roll No</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {deptStudents.map((student) => (
+                                                    <tr key={student._id}>
+                                                        <td className="py-2 font-semibold text-slate-700">{student.name}</td>
+                                                        <td className="py-2 font-mono text-slate-500">{student.rollNumber || "-"}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm space-y-4">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800">Registered Volunteers by Department</h3>
+                        <p className="text-xs text-slate-400 mt-0.5">Open a department to view registered students</p>
+                    </div>
+                    {loading ? (
+                        <div className="h-24 animate-pulse bg-slate-100 rounded-2xl"></div>
+                    ) : registeredStudents.length === 0 ? (
+                        <div className="rounded-2xl border-2 border-dashed border-slate-150 p-6 text-center text-slate-400 text-sm">
+                            No students have registered for your drives yet.
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-100 rounded-xl border border-slate-100">
+                            {Object.entries(registeredByDepartment).map(([department, deptStudents]) => (
+                                <details key={department} className="group">
+                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 hover:bg-slate-50">
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-800">{department}</p>
+                                            <p className="text-xs text-slate-400">{deptStudents.length} registered</p>
+                                        </div>
+                                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                                            {Math.round((deptStudents.length / registeredStudents.length) * 100)}%
+                                        </span>
+                                    </summary>
+                                    <div className="max-h-56 overflow-y-auto border-t border-slate-100 bg-slate-50 px-4 py-2">
+                                        <table className="w-full text-left text-xs">
+                                            <thead className="text-slate-400">
+                                                <tr>
+                                                    <th className="py-2 font-bold uppercase">Name</th>
+                                                    <th className="py-2 font-bold uppercase">Roll No</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {deptStudents.map((student) => (
+                                                    <tr key={`${department}-${student._id}`}>
+                                                        <td className="py-2 font-semibold text-slate-700">{student.name}</td>
+                                                        <td className="py-2 font-mono text-slate-500">{student.rollNumber || "-"}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 

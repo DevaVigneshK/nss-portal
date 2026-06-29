@@ -55,6 +55,13 @@ const eventSchema = new mongoose.Schema({
     hoursCredited: {
         type: Number,
         default: 3 // Default volunteer hours earned by attending this event
+    },
+    attendanceCode: {
+        type: String,
+        default: ""
+    },
+    attendanceCodeExpiresAt: {
+        type: Date
     }
 }, { timestamps: true });
 

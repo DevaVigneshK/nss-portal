@@ -8,6 +8,7 @@ export default function StudentDashboard() {
     const [attendance, setAttendance] = useState([]);
     const [myEvents, setMyEvents] = useState([]);
     const [loading, setLoading] = useState(true);
+    const userId = user?.id || user?._id;
 
     useEffect(() => {
         const fetchStudentStats = async () => {
@@ -15,13 +16,19 @@ export default function StudentDashboard() {
             try {
                 // Fetch attendance logs
                 const attRes = await axios.get("/attendance");
-                setAttendance(attRes.data.filter(att => att.studentId?._id === user?.id || att.studentId === user?.id));
+                setAttendance(attRes.data.filter((att) => {
+                    const studentId = att.studentId?._id || att.studentId;
+                    return studentId?.toString() === userId?.toString();
+                }));
 
                 // Fetch registered upcoming events
                 const eventsRes = await axios.get("/events");
-                const registered = eventsRes.data.filter((e) =>
-                    e.registeredStudents?.some((s) => s._id === user?.id || s === user?.id)
-                );
+                const registered = eventsRes.data.filter((e) => {
+                    return e.registeredStudents?.some((s) => {
+                        const studentId = s?._id || s;
+                        return studentId?.toString() === userId?.toString();
+                    });
+                });
                 setMyEvents(registered);
             } catch (err) {
                 console.error("Failed to load student statistics:", err);
@@ -33,7 +40,7 @@ export default function StudentDashboard() {
         if (user) {
             fetchStudentStats();
         }
-    }, [user]);
+    }, [user, userId]);
 
     if (!user) return null;
 

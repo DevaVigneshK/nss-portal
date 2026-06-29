@@ -60,6 +60,7 @@ export default function App() {
                 <Routes>
                     {/* Public Routes without Sidebar */}
                     <Route path="/login" element={<Login />} />
+                    <Route path="/admin-login" element={<Login portal="admin" />} />
                     <Route path="/register" element={<Register />} />
 
                     {/* Standard Pages with MainLayout */}

@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
             }
             try {
                 const res = await axios.get("/auth/profile");
-                setUser(res.data);
+                setUser({ ...res.data, id: res.data._id || res.data.id });
             } catch (err) {
                 console.error("Token verification failed, logging out...", err);
                 logout();

@@ -7,7 +7,6 @@ export default function Register() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [role, setRole] = useState("student");
     const [department, setDepartment] = useState("");
     const [rollNumber, setRollNumber] = useState("");
     const [phone, setPhone] = useState("");
@@ -24,9 +23,8 @@ export default function Register() {
                 name,
                 email,
                 password,
-                role,
                 department,
-                rollNumber: role === "student" ? rollNumber : "",
+                rollNumber,
                 phone
             });
             navigate("/login");
@@ -45,7 +43,7 @@ export default function Register() {
                         NSS
                     </span>
                     <h2 className="text-3xl font-extrabold tracking-tight text-slate-800">Volunteer Enlistment</h2>
-                    <p className="text-sm text-slate-500">Register as a student volunteer or coordinator</p>
+                    <p className="text-sm text-slate-500">Register as a student volunteer</p>
                 </div>
 
                 {error && (
@@ -55,35 +53,6 @@ export default function Register() {
                 )}
 
                 <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-                    {/* Role toggle */}
-                    <div className="space-y-1 text-left">
-                        <label className="text-xs font-bold text-slate-400 uppercase">Registration Role</label>
-                        <div className="grid grid-cols-2 gap-3 mt-1">
-                            <button
-                                type="button"
-                                onClick={() => setRole("student")}
-                                className={`rounded-xl border py-3 text-sm font-semibold transition ${
-                                    role === "student"
-                                        ? "border-indigo-600 bg-indigo-50 text-indigo-750"
-                                        : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                                }`}
-                            >
-                                Student Volunteer
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setRole("organizer")}
-                                className={`rounded-xl border py-3 text-sm font-semibold transition ${
-                                    role === "organizer"
-                                        ? "border-indigo-600 bg-indigo-50 text-indigo-750"
-                                        : "border-slate-200 text-slate-500 hover:bg-slate-50"
-                                }`}
-                            >
-                                Staff Coordinator
-                            </button>
-                        </div>
-                    </div>
-
                     <div className="space-y-1 text-left">
                         <label className="text-xs font-bold text-slate-400 uppercase">Full Name</label>
                         <input
@@ -140,19 +109,17 @@ export default function Register() {
                             </select>
                         </div>
 
-                        {role === "student" && (
-                            <div className="space-y-1 text-left">
-                                <label className="text-xs font-bold text-slate-400 uppercase">Roll Number</label>
-                                <input
-                                    required
-                                    type="text"
-                                    placeholder="e.g. 21CS042"
-                                    value={rollNumber}
-                                    onChange={(e) => setRollNumber(e.target.value)}
-                                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition"
-                                />
-                            </div>
-                        )}
+                        <div className="space-y-1 text-left">
+                            <label className="text-xs font-bold text-slate-400 uppercase">Roll Number</label>
+                            <input
+                                required
+                                type="text"
+                                placeholder="e.g. 21CS042"
+                                value={rollNumber}
+                                onChange={(e) => setRollNumber(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition"
+                            />
+                        </div>
                     </div>
 
                     <div className="space-y-1 text-left">

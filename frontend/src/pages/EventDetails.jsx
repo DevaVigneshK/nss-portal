@@ -12,7 +12,19 @@ export default function EventDetails() {
     const [error, setError] = useState("");
     const [markingAttendance, setMarkingAttendance] = useState(false);
     const [studentList, setStudentList] = useState([]);
+    const [attendanceCode, setAttendanceCode] = useState(null);
+    const [generatingCode, setGeneratingCode] = useState(false);
     const navigate = useNavigate();
+    const userId = user?.id || user?._id;
+
+    const groupByDepartment = (list) => {
+        return list.reduce((groups, item) => {
+            const department = item.department || "General";
+            if (!groups[department]) groups[department] = [];
+            groups[department].push(item);
+            return groups;
+        }, {});
+    };
 
     const fetchEventDetails = async () => {
         setLoading(true);
@@ -72,6 +84,22 @@ export default function EventDetails() {
         }
     };
 
+    const handleGenerateAttendanceCode = async () => {
+        setGeneratingCode(true);
+        setError("");
+        try {
+            const res = await axios.post("/attendance/generate-qr", {
+                eventId: event._id
+            });
+            setAttendanceCode(res.data.qrData);
+            fetchEventDetails();
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to generate attendance code");
+        } finally {
+            setGeneratingCode(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex h-64 items-center justify-center">
@@ -84,9 +112,14 @@ export default function EventDetails() {
         return <div className="rounded-2xl bg-rose-50 p-6 text-center text-rose-600 font-semibold">{error}</div>;
     }
 
-    const isRegistered = event.registeredStudents?.some((s) => s._id === user?.id);
+    const isRegistered = event.registeredStudents?.some((s) => {
+        const studentId = s?._id || s;
+        return studentId?.toString() === userId?.toString();
+    });
     const isStaff = user && (user.role === "organizer" || user.role === "admin");
     const isLimitReached = event.registeredStudents?.length >= event.participantLimit;
+    const registeredStudents = event.registeredStudents || [];
+    const registeredByDepartment = groupByDepartment(registeredStudents);
 
     return (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -154,6 +187,60 @@ export default function EventDetails() {
                             >
                                 Complete Event
                             </button>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                                <div>
+                                    <h4 className="text-sm font-bold text-slate-800">Registered Students by Department</h4>
+                                    <p className="text-xs text-slate-400">Open a department to view registered students</p>
+                                </div>
+                                <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-indigo-700">
+                                    {registeredStudents.length} total
+                                </span>
+                            </div>
+
+                            {registeredStudents.length === 0 ? (
+                                <div className="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-center text-sm text-slate-400">
+                                    No students registered for this event yet.
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 bg-white">
+                                    {Object.entries(registeredByDepartment).map(([department, students]) => (
+                                        <details key={department} className="group">
+                                            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 hover:bg-slate-50">
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-800">{department}</p>
+                                                    <p className="text-xs text-slate-400">Registered students</p>
+                                                </div>
+                                                <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
+                                                    {students.length}
+                                                </span>
+                                            </summary>
+                                            <div className="max-h-56 overflow-y-auto border-t border-slate-100 bg-slate-50 px-4 py-2">
+                                                <table className="w-full text-left text-xs">
+                                                    <thead className="text-slate-400">
+                                                        <tr>
+                                                            <th className="py-2 font-bold uppercase">Name</th>
+                                                            <th className="py-2 font-bold uppercase">Roll No</th>
+                                                            <th className="py-2 font-bold uppercase">Email</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {students.map((student) => (
+                                                            <tr key={student._id}>
+                                                                <td className="py-2 font-semibold text-slate-700">{student.name}</td>
+                                                                <td className="py-2 font-mono text-slate-500">{student.rollNumber || "-"}</td>
+                                                                <td className="py-2 font-mono text-slate-500">{student.email}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </details>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex gap-4">
@@ -243,13 +330,27 @@ export default function EventDetails() {
                 {/* Event Attendance QR code helper for coordinators */}
                 {isStaff && (
                     <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm space-y-4 text-center">
-                        <h3 className="text-lg font-bold text-slate-800">Attendance Passcode</h3>
+                        <h3 className="text-lg font-bold text-slate-800">Attendance Code</h3>
                         <div className="rounded-2xl bg-indigo-50/50 p-5 border border-indigo-100">
                             <p className="text-3xl font-extrabold text-indigo-700 tracking-wider font-mono">
-                                NSS-{event._id.substring(event._id.length - 6).toUpperCase()}
+                                {attendanceCode?.passcode || event.attendanceCode || "------"}
                             </p>
-                            <p className="text-xs text-indigo-500 mt-2 font-medium">Students can scan details or use this static passcode to check-in</p>
+                            <p className="text-xs text-indigo-500 mt-2 font-medium">
+                                {attendanceCode?.expiresAt || event.attendanceCodeExpiresAt
+                                    ? `Expires at ${new Date(attendanceCode?.expiresAt || event.attendanceCodeExpiresAt).toLocaleTimeString()}`
+                                    : "Generate a code before taking student attendance"}
+                            </p>
                         </div>
+                        <button
+                            onClick={handleGenerateAttendanceCode}
+                            disabled={generatingCode || event.status === "Completed"}
+                            className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white shadow hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                            {generatingCode ? "Generating..." : "Generate Attendance Code"}
+                        </button>
+                        <p className="text-xs text-slate-400">
+                            Students must enter this code from their attendance page to check in.
+                        </p>
                     </div>
                 )}
             </div>
