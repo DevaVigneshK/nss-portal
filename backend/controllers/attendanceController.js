@@ -1,5 +1,6 @@
 const Attendance = require("../models/Attendance");
 const Event = require("../models/Event");
+const { checkAndUpdateEventStatuses } = require("../utils/eventStatusHelper");
 const User = require("../models/User");
 
 // Helper to credit hours to user
@@ -73,6 +74,7 @@ exports.getAttendance = async (req, res) => {
 // Generate QR Code payload for students to scan
 exports.generateAttendanceCode = async (req, res) => {
     try {
+        await checkAndUpdateEventStatuses();
         const { eventId } = req.body;
         const event = await Event.findById(eventId);
         if (!event) {
@@ -108,6 +110,7 @@ exports.generateAttendanceCode = async (req, res) => {
 // Verify OTP or QR Code submitted by student to check in
 exports.selfCheckIn = async (req, res) => {
     try {
+        await checkAndUpdateEventStatuses();
         const { eventId, passcode } = req.body;
         const studentId = req.user.id;
 

@@ -1,9 +1,11 @@
 const Event = require("../models/Event");
+const { checkAndUpdateEventStatuses } = require("../utils/eventStatusHelper");
 const User = require("../models/User");
 const Attendance = require("../models/Attendance");
 
 exports.getDashboardStats = async (req, res) => {
     try {
+        await checkAndUpdateEventStatuses();
         const totalEvents = await Event.countDocuments();
         const upcomingEvents = await Event.countDocuments({ status: "Upcoming" });
         const activeEvents = await Event.countDocuments({ status: "Active" });

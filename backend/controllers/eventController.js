@@ -1,4 +1,6 @@
 const Event = require("../models/Event");
+const { checkAndUpdateEventStatuses } = require("../utils/eventStatusHelper");
+
 
 exports.createEvent = async (req, res) => {
     try {
@@ -21,6 +23,7 @@ exports.createEvent = async (req, res) => {
 
 exports.getEvents = async (req, res) => {
     try {
+        await checkAndUpdateEventStatuses();
         const { status, category } = req.query;
         let query = {};
         if (status) query.status = status;
@@ -39,6 +42,7 @@ exports.getEvents = async (req, res) => {
 
 exports.getEventById = async (req, res) => {
     try {
+        await checkAndUpdateEventStatuses();
         const event = await Event.findById(req.params.id)
             .populate("organizer", "name email department phone")
             .populate("registeredStudents", "name email department rollNumber phone");

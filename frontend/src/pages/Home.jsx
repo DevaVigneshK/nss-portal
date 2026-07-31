@@ -134,13 +134,13 @@ export default function Home() {
                         <div key={n} className="h-64 animate-pulse rounded-2xl bg-slate-100"></div>
                     ))}
                 </div>
-            ) : events.length === 0 ? (
+            ) : events.filter(e => e.status !== "Completed").length === 0 ? (
                 <div className="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center">
                     <p className="text-lg font-medium text-slate-500">No scheduled NSS activities found.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {events.map((event) => (
+                    {events.filter(e => e.status !== "Completed").map((event) => (
                         <div key={event._id} className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">

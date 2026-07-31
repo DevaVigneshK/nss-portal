@@ -24,7 +24,7 @@ export default function StudentDashboard() {
                 // Fetch registered upcoming events
                 const eventsRes = await axios.get("/events");
                 const registered = eventsRes.data.filter((e) => {
-                    return e.registeredStudents?.some((s) => {
+                    return e.status !== "Completed" && e.registeredStudents?.some((s) => {
                         const studentId = s?._id || s;
                         return studentId?.toString() === userId?.toString();
                     });
