@@ -5,6 +5,7 @@ export const AuthContext = createContext();
 
 // Set base URL for backend API requests
 axios.defaults.baseURL = "http://localhost:5000/api";
+axios.defaults.timeout = 10000;
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -48,7 +49,9 @@ export const AuthProvider = ({ children }) => {
             setUser(loggedUser);
             return loggedUser;
         } catch (err) {
-            const msg = err.response?.data?.message || "Login failed. Please check credentials.";
+            const msg = err.code === "ECONNABORTED"
+                ? "The server is taking too long to respond. Please try again in a moment."
+                : err.response?.data?.message || "Login failed. Please check credentials.";
             setErrorMessage(msg);
             throw new Error(msg);
         }
