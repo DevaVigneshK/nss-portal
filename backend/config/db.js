@@ -1,22 +1,37 @@
 const mongoose = require("mongoose");
 
-const connectDB = async () => {
-    try {
+let connectionPromise;
 
-        await mongoose.connect(process.env.MONGO_URI, {
+const connectDB = async () => {
+    if (mongoose.connection.readyState === 1) {
+        return mongoose.connection;
+    }
+
+    if (connectionPromise) {
+        return connectionPromise;
+    }
+
+    try {
+        if (!process.env.MONGO_URI) {
+            throw new Error("MONGO_URI is not configured");
+        }
+
+        connectionPromise = mongoose.connect(process.env.MONGO_URI, {
             serverSelectionTimeoutMS: 5000,
             connectTimeoutMS: 5000,
             socketTimeoutMS: 10000,
             maxPoolSize: 10
         });
 
+        await connectionPromise;
+
         console.log("MongoDB Connected");
+        return mongoose.connection;
 
     } catch (error) {
-
+        connectionPromise = undefined;
         console.error(`MongoDB connection failed: ${error.message}`);
         throw error;
-
     }
 };
 
